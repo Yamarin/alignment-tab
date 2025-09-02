@@ -51,7 +51,7 @@ export function createAlignmentTab(actor) {
   }
 
   // Render history entries
-  const historyHtml = history.map(entry => `<div class=\"alignment-history-entry\">${entry}</div>`).join("");
+  const historyHtml = history.map(entry => `<div class=\"alignment-history-entry\">${entry}</div>`).reverse().join("");
   // Add style for subtle line between history entries
   if (!document.getElementById('alignment-history-entry-style')) {
     const style = document.createElement('style');
@@ -227,78 +227,51 @@ export function createAlignmentTab(actor) {
     const canvas = alignmentTab.querySelector('#alignment-canvas');
     if (canvas && canvas.getContext) {
       const ctx = canvas.getContext('2d');
-      // Fill each cell with interpolated color (intense red/gray/green)
-      for (let law = 0; law < 45; law++) {
-        for (let moral = 0; moral < 45; moral++) {
-          // Calculate color: interpolate from red (0,0) through gray (21,21) to green (44,44)
-          // Red: (255,0,0), Gray: (180,180,180), Green: (0,128,0)
-          // Interpolate law axis (horizontal)
-          let tLaw = law / 44;
-          let tMoral = moral / 44;
-          // Interpolate to gray at center, then to green at max
-          function lerp(a, b, t) { return Math.round(a + (b - a) * t); }
-          // First, interpolate red to gray, then gray to green
-          let r, g, b;
-          if (tLaw < 0.5) {
-            // Red to gray
-            let t = tLaw * 2;
-            r = lerp(255, 180, t);
-            g = lerp(0, 180, t);
-            b = lerp(0, 180, t);
-          } else {
-            // Gray to green
-            let t = (tLaw - 0.5) * 2;
-            r = lerp(180, 0, t);
-            g = lerp(180, 128, t);
-            b = lerp(180, 0, t);
-          }
-          // Now blend with moral axis: blend with same logic, then average
-          let r2, g2, b2;
-          if (tMoral < 0.5) {
-            let t = tMoral * 2;
-            r2 = lerp(255, 180, t);
-            g2 = lerp(0, 180, t);
-            b2 = lerp(0, 180, t);
-          } else {
-            let t = (tMoral - 0.5) * 2;
-            r2 = lerp(180, 0, t);
-            g2 = lerp(180, 128, t);
-            b2 = lerp(180, 0, t);
-          }
-          // Mix both axes (average)
-          let rf = Math.round((r + r2) / 2);
-          let gf = Math.round((g + g2) / 2);
-          let bf = Math.round((b + b2) / 2);
-          ctx.fillStyle = `rgb(${rf},${gf},${bf})`;
-          // (0,0) is right bottom
-          let x = 220 - law * 5;
-          let y = 225 - (moral+1)*5;
-          ctx.fillRect(x, y, 5, 5);
+      // Draw the static image as the background
+      const img = new window.Image();
+      img.onload = function() {
+        ctx.clearRect(0, 0, 225, 225);
+        ctx.drawImage(img, 0, 0, 225, 225);
+        // Draw big grid (3x3, thick lines, each 75x75) with lighter color
+        ctx.strokeStyle = '#bbb';
+        ctx.lineWidth = 2;
+        for (let i = 0; i <= 3; i++) {
+          // vertical big lines
+          ctx.beginPath();
+          ctx.moveTo(i*75, 0);
+          ctx.lineTo(i*75, 225);
+          ctx.stroke();
+          // horizontal big lines
+          ctx.beginPath();
+          ctx.moveTo(0, 225-i*75);
+          ctx.lineTo(225, 225-i*75);
+          ctx.stroke();
         }
-      }
-      // Draw big grid (3x3, thick lines, each 75x75) with lighter color
-      ctx.strokeStyle = '#bbb';
-      ctx.lineWidth = 2;
-      for (let i = 0; i <= 3; i++) {
-        // vertical big lines
-        ctx.beginPath();
-        ctx.moveTo(i*75, 0);
-        ctx.lineTo(i*75, 225);
-        ctx.stroke();
-        // horizontal big lines
-        ctx.beginPath();
-        ctx.moveTo(0, 225-i*75);
-        ctx.lineTo(225, 225-i*75);
-        ctx.stroke();
-      }
-      // Draw marker for (law, moral) on a 45x45 grid
-     console.log('[alignment-tab] Drawing marker with alignmentValues:', alignmentValues);
-      let law = Math.max(0, Math.min(44, alignmentValues.law));
-      let moral = Math.max(0, Math.min(44, alignmentValues.moral));
-      let x = 220 - law * 5;
-      let y = 225 - (moral+1)*5;
-      ctx.fillStyle = '#111';
-      ctx.fillRect(x, y, 5, 5);
+        // Draw marker for (law, moral) on a 45x45 grid
+  let law = Math.max(0, Math.min(44, alignmentValues.law));
+  let moral = Math.max(0, Math.min(44, alignmentValues.moral));
+  let x = 220 - law * 5 + 2.5; // center of cell
+  let y = 225 - (moral+1)*5 + 2.5;
+  // Draw a fancy marker: white outer circle, thick black border, yellow fill
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, 7, 0, 2 * Math.PI, false); // outer white
+  ctx.fillStyle = 'white';
+  ctx.shadowColor = 'black';
+  ctx.shadowBlur = 4;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x, y, 6, 0, 2 * Math.PI, false); // border
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = 'black';
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(x, y, 5, 0, 2 * Math.PI, false); // yellow fill
+  ctx.fillStyle = 'rgba(187, 14, 164, 0.85)';
+  ctx.fill();
+  ctx.restore();
+      };
+      img.src = 'modules/alignment-tab/assets/grid_background.png';
     }
 
     // Add event listener for the Add Alignment Change button (scoped to this tab)
