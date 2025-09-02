@@ -1,4 +1,5 @@
 import { ensureAlignmentTab } from "./alignment-tab.js";
+import { openAlignmentGridWindow } from "./alignment-view.js";
 console.log("[alignment-tab] tabbutton.js loaded");
 Hooks.on("renderCharacterSheetPF2e", (app, html, data) => {
   // Find the navigation bar
@@ -20,4 +21,21 @@ Hooks.on("renderCharacterSheetPF2e", (app, html, data) => {
   }
   // Add custom tab content if not already present
   ensureAlignmentTab(html, app);
+});
+
+// Add a button to the Journal Notes controls submenu (sidebar)
+Hooks.on('getSceneControlButtons', controls => {
+  const notes = controls.find(c => c.name === 'notes');
+  if (notes && notes.tools) {
+    notes.tools.push({
+      name: 'alignment-view',
+      title: 'Alignment Grid',
+      icon: 'fa-solid fa-scale-balanced', // balance scale icon for alignment
+      visible: true,
+      onClick: () => {
+        openAlignmentGridWindow();
+      },
+      button: true
+    });
+  }
 });
