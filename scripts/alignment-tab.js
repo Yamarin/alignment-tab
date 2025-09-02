@@ -52,6 +52,21 @@ export function createAlignmentTab(actor) {
 
   // Render history entries
   const historyHtml = history.map(entry => `<div class=\"alignment-history-entry\">${entry}</div>`).join("");
+  // Add style for subtle line between history entries
+  if (!document.getElementById('alignment-history-entry-style')) {
+    const style = document.createElement('style');
+    style.id = 'alignment-history-entry-style';
+    style.textContent = `
+      .alignment-history-list .alignment-history-entry {
+        padding: 0.2em 0.3em;
+        border-bottom: 1px solid #e0dbe7;
+      }
+      .alignment-history-list .alignment-history-entry:last-child {
+        border-bottom: none;
+      }
+    `;
+    document.head.appendChild(style);
+  }
 
   // Translate law and moral values to words
   function lawToWord(val) {
@@ -69,22 +84,30 @@ export function createAlignmentTab(actor) {
 
   alignmentTab.innerHTML = `
     <div class="alignment-tab-sections" style="display: flex; flex-direction: row; width: 100%;">
-      <div class="alignment-tab-left" style="min-width: 255px; flex: 0 0 255px; padding: 1em; box-sizing: border-box; border-right: 1px solid #ccc;">
-        <canvas id="alignment-canvas" width="225" height="225" style="background:#f5eaff;border:2px dashed #bbb;display:block;"></canvas>
-        <div style="font-size:1.1em;margin-top:0.5em;"><strong>Alignment</strong></div>
+      <div class="alignment-tab-left" style="min-width: 255px; flex: 0 0 255px; padding: 1em; box-sizing: border-box; position: relative;">
+        <div style="position: relative; width: 225px; height: 225px; margin: 0 auto;">
+          <span style="position: absolute; left: -38px; top: 50%; transform: translateY(-50%) rotate(-90deg); font-size: 0.85em; color: #555; letter-spacing: 0.1em; font-weight: bold; white-space:nowrap;">LAWFUL</span>
+          <span style="position: absolute; right: -44px; top: 50%; transform: translateY(-50%) rotate(90deg); font-size: 0.85em; color: #555; letter-spacing: 0.1em; font-weight: bold; white-space:nowrap;">CHAOTIC</span>
+          <span style="position: absolute; left: 50%; top: -12px; transform: translateX(-50%); font-size: 0.85em; color: #555; letter-spacing: 0.1em; font-weight: bold; white-space:nowrap;">GOOD</span>
+          <span style="position: absolute; left: 50%; bottom: -18px; transform: translateX(-50%); font-size: 0.85em; color: #555; letter-spacing: 0.1em; font-weight: bold; white-space:nowrap;">EVIL</span>
+          <canvas id="alignment-canvas" width="225" height="225" style="background:#f5eaff;border:2px dashed #bbb;display:block;"></canvas>
+        </div>
+  <div style="font-size:1.1em;margin-top:1.5em;"><strong>Alignment</strong></div>
         <div>Laws: <strong>${lawToWord(alignmentValues.law)}</strong></div>
         <div>Morals: <strong>${moralToWord(alignmentValues.moral)}</strong></div>
       </div>
       <div class="alignment-tab-right" style="flex: 1 1 0; padding: 1em; box-sizing: border-box;">
-        <h3 class="alignment-history-header">Alignment History</h3>
-          <div class="alignment-history-list" style="max-height: 320px; overflow-y: auto; border: 1px solid #eee; border-radius: 4px; background: transparent; padding: 0.5em;">
-          ${historyHtml}
+        <div style="display: flex; flex-direction: column; height: 320px;">
+          <h3 class="alignment-history-header" style="flex: 0 0 auto;">Alignment History</h3>
+          <div class="alignment-history-list" style="flex: 1 1 0; min-height: 0; overflow-y: auto; border: 1px solid #eee; border-radius: 4px; background: transparent; padding: 0.5em;">
+            ${historyHtml}
+          </div>
         </div>
       </div>
     </div>
     
       <div class="alignment-tab-modify" style="margin-top:2em; padding: 1em; border-top: 1px solid #ccc;">
-        <h3>Modify alignment</h3>
+  <h3 style="margin-top:0;">Modify alignment</h3>
         <div style="display: flex; align-items: center; gap: 0.5em; margin-top: 1em;">
           <span><strong>Laws:</strong></span>
           <button id="law-plus" type="button" style="width:2em;">+</button>
@@ -95,9 +118,13 @@ export function createAlignmentTab(actor) {
           <button id="moral-plus" type="button" style="width:2em;">+</button>
           <span id="moral-delta" style="min-width:2em;display:inline-block;text-align:center;">0</span>
           <button id="moral-minus" type="button" style="width:2em;">-</button>
-          <button id="alignment-config-btn" type="button" title="Configure starting alignment" style="width:2em; margin-left:0.5em;">
-            <span style="display:inline-block;width:1em;height:1em;vertical-align:middle;">
-              <svg viewBox="0 0 20 20" width="16" height="16" style="vertical-align:middle;"><circle cx="10" cy="10" r="8" stroke="#888" stroke-width="2" fill="none"/><path d="M10 5v2M10 13v2M5 10h2M13 10h2M7.5 7.5l1 1M11.5 11.5l1 1M7.5 12.5l1-1M11.5 8.5l1-1" stroke="#888" stroke-width="1.2" fill="none"/></svg>
+          <span style="flex:1 1 auto;"></span>
+          <button id="alignment-config-btn" type="button" title="Configure starting alignment" style="width:2em;">
+            <span style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;">
+              <svg viewBox="0 0 20 20" width="18" height="18" style="display:block;margin:auto;" aria-hidden="true">
+                <circle cx="10" cy="10" r="8" stroke="#222" stroke-width="2" fill="none"/>
+                <path d="M10 5v2M10 13v2M5 10h2M13 10h2M7.5 7.5l1 1M11.5 11.5l1 1M7.5 12.5l1-1M11.5 8.5l1-1" stroke="#222" stroke-width="1.4" fill="none"/>
+              </svg>
             </span>
           </button>
         </div>
@@ -107,7 +134,8 @@ export function createAlignmentTab(actor) {
 
         <!-- Modal for starting alignment config -->
         <div id="alignment-config-modal" style="display:none; position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:10000; background:#fff; border:2px solid #888; border-radius:8px; box-shadow:0 2px 16px #0003; padding:1.5em; min-width:260px;">
-          <div style="margin-bottom:1em; font-weight:bold;">Set Starting Alignment</div>
+          <div style="margin-bottom:0.5em; font-weight:bold;">Set Starting Alignment</div>
+          <div style="color:#b00; background:#fff0f0; border:1px solid #b00; border-radius:4px; padding:0.5em 0.7em; margin-bottom:1em; font-size:1.1em; text-align:center; font-weight:bold;">This action will reset any alignment history you have!</div>
           <select id="alignment-preset-select" style="width:100%; margin-bottom:1em;">
             <option value="">Select...</option>
             <option value="Lawful Good">Lawful Good</option>
@@ -163,7 +191,10 @@ export function createAlignmentTab(actor) {
       if (preset && presetMap[preset]) {
         if (actor) {
           await actor.setFlag('alignment-tab', 'alignmentValues', { ...presetMap[preset] });
-          // Optionally, clear history or reset deltas if needed
+          // Add history entry for setting starting alignment
+          await actor.setFlag('alignment-tab', 'history', [
+            `You set starting alignment to ${preset}`
+          ]);
           sessionStorage.setItem('alignment-tab-keep-active', '1');
           let appElementForRender = alignmentTab.closest('.app');
           if (appElementForRender && appElementForRender.app && typeof appElementForRender.app.render === 'function') {
@@ -276,15 +307,15 @@ export function createAlignmentTab(actor) {
   if (addBtn && infoInput) {
     addBtn.addEventListener("click", async () => {
       const info = infoInput.value.trim();
-      if (!info) return;
-      // Use the actor passed to the tab
-      let history = [];
-      let alignmentValues = { law: 0, moral: 0 };
-      // Always read deltas from the UI
       let lawDeltaVal = alignmentTab.querySelector('#law-delta').textContent.trim();
       let moralDeltaVal = alignmentTab.querySelector('#moral-delta').textContent.trim();
       let lawDeltaNum = parseInt(lawDeltaVal) || 0;
       let moralDeltaNum = parseInt(moralDeltaVal) || 0;
+      // Prevent adding if info is empty or both deltas are zero
+      if (!info || (lawDeltaNum === 0 && moralDeltaNum === 0)) return;
+      // Use the actor passed to the tab
+      let history = [];
+      let alignmentValues = { law: 0, moral: 0 };
       let entry = info;
       // Only add delta info if nonzero, and format as in the examples
       let deltaStr = [];
