@@ -1,4 +1,5 @@
 {
+  "id": "alignment-tab",
   "name": "alignment-tab",
   "title": "Alignment Tab",
   "description": "Adds an Alignment Tab to the PF2E character sheet.",
@@ -9,5 +10,7 @@
   "systems": ["pf2e"],
   "esmodules": ["scripts/tab-button.js"],
   "styles": ["styles/main.css"],
-  "url": "https://your-module-url"
+  "url": "https://github.com/Yamarin/alignment-tab",
+  "manifest": "https://github.com/Yamarin/alignment-tab/releases/download/v1.0.0/module.json",
+  "download": "https://github.com/Yamarin/alignment-tab/releases/latest/download/alignment-tab.zip"
 }
