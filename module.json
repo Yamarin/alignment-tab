@@ -1,9 +1,9 @@
 {
   "name": "alignment-tab",
   "title": "Alignment Tab",
-  "description": "Adds an Alignment button to the PF2E character sheet.",
+  "description": "Adds an Alignment Tab to the PF2E character sheet.",
   "version": "1.0.0",
-  "author": "Your Name",
+  "author": "Yamarin",
   "minimumCoreVersion": "12",
   "compatibleCoreVersion": "12",
   "systems": ["pf2e"],
