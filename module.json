@@ -1,0 +1,13 @@
+{
+  "name": "alignment-tab",
+  "title": "Alignment Tab",
+  "description": "Adds a custom button to the PF2E character sheet.",
+  "version": "1.0.0",
+  "author": "Your Name",
+  "minimumCoreVersion": "12",
+  "compatibleCoreVersion": "12",
+  "systems": ["pf2e"],
+  "esmodules": ["scripts/main.js"],
+  "styles": ["styles/main.css"],
+  "url": "https://your-module-url"
+}
