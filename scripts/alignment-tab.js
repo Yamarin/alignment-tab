@@ -1,55 +1,44 @@
 export function ensureAlignmentTab(html) {
+  // Use the app argument (sheet instance) to get the actor
+  let actor = null;
+  if (arguments.length > 1 && arguments[1] && arguments[1].actor) {
+    actor = arguments[1].actor;
+  } else if (window.actor) {
+    actor = window.actor;
+  }
   const tabs = html[0].querySelector(".sheet-content");
   if (tabs && !tabs.querySelector(".tab[data-tab='alignment']")) {
-    const alignmentTab = createAlignmentTab();
+    const alignmentTab = createAlignmentTab(actor);
     tabs.appendChild(alignmentTab);
+  }
+
+  // If a flag is set, activate the alignment tab after render
+  if (sessionStorage.getItem('alignment-tab-keep-active')) {
+    const nav = html[0].querySelector("nav.sheet-navigation[data-group='primary']");
+    const tabButton = nav && nav.querySelector("a[data-tab='alignment']");
+    const tabContent = html[0].querySelector(".tab[data-tab='alignment']");
+    if (tabButton && tabContent) {
+      // Deactivate all tabs
+      nav.querySelectorAll('a.item').forEach(a => a.classList.remove('active'));
+      html[0].querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      // Activate alignment tab
+      tabButton.classList.add('active');
+      tabContent.classList.add('active');
+    }
+    sessionStorage.removeItem('alignment-tab-keep-active');
   }
 }
 // alignmentTab.js
 // Handles the creation and content of the Alignment tab in the character sheet.
 
-export function createAlignmentTab() {
+export function createAlignmentTab(actor) {
   const alignmentTab = document.createElement("div");
   alignmentTab.className = "tab";
   alignmentTab.dataset.tab = "alignment";
-
-  // Try to get the actor from the sheet context
-  let actor = null;
-  // Find the closest element with .app and get its app reference
-  let appElement = null;
-  if (typeof html !== "undefined" && html[0]) {
-    appElement = html[0].closest('.app');
-    if (appElement && appElement.app && appElement.app.actor) {
-      actor = appElement.app.actor;
-    }
-  }
   // Get the actor from the sheet context
-  // Sample history
-  const sampleHistory = [
-    "John moved to +1 righteous",
-    "Jane moved to -1 evil",
-    "Alex moved to +2 good",
-    "Sam moved to -1 chaotic",
-    "Chris moved to +1 lawful",
-    "Morgan moved to +1 neutral",
-    "Taylor moved to -2 evil",
-    "Jordan moved to +1 good",
-    "Casey moved to -1 neutral",
-    "Riley moved to +1 righteous"
-  ];
+  let history = [];
+  let alignmentValues = { law: 14, moral: 14 };
 
-  // Sample alignment values
-  const sampleAlignmentValues = { law: 14, moral: 14 };
-
-  // Save to flags if actor is available
-  if (actor) {
-    actor.setFlag("alignment-tab", "history", sampleHistory);
-    actor.setFlag("alignment-tab", "alignmentValues", sampleAlignmentValues);
-  }
-
-  // Try to get history from flags (sync fallback to sample if not found)
-  let history = sampleHistory;
-  let alignmentValues = sampleAlignmentValues;
   if (actor) {
     const flagHistory = actor.getFlag("alignment-tab", "history");
     if (Array.isArray(flagHistory) && flagHistory.length > 0) {
@@ -88,7 +77,7 @@ export function createAlignmentTab() {
       </div>
       <div class="alignment-tab-right" style="flex: 1 1 0; padding: 1em; box-sizing: border-box;">
         <h3 class="alignment-history-header">Alignment History</h3>
-        <div class="alignment-history-list">
+          <div class="alignment-history-list" style="max-height: 320px; overflow-y: auto; border: 1px solid #eee; border-radius: 4px; background: transparent; padding: 0.5em;">
           ${historyHtml}
         </div>
       </div>
@@ -106,18 +95,89 @@ export function createAlignmentTab() {
           <button id="moral-plus" type="button" style="width:2em;">+</button>
           <span id="moral-delta" style="min-width:2em;display:inline-block;text-align:center;">0</span>
           <button id="moral-minus" type="button" style="width:2em;">-</button>
+          <button id="alignment-config-btn" type="button" title="Configure starting alignment" style="width:2em; margin-left:0.5em;">
+            <span style="display:inline-block;width:1em;height:1em;vertical-align:middle;">
+              <svg viewBox="0 0 20 20" width="16" height="16" style="vertical-align:middle;"><circle cx="10" cy="10" r="8" stroke="#888" stroke-width="2" fill="none"/><path d="M10 5v2M10 13v2M5 10h2M13 10h2M7.5 7.5l1 1M11.5 11.5l1 1M7.5 12.5l1-1M11.5 8.5l1-1" stroke="#888" stroke-width="1.2" fill="none"/></svg>
+            </span>
+          </button>
         </div>
         <label for="alignment-info-input"><strong>Info:</strong></label>
         <input id="alignment-info-input" type="text" style="width: 100%; margin-bottom: 0.5em;" placeholder="Describe alignment change..." />
         <button id="alignment-add-btn" style="display: block; margin-top: 0.5em;">Add Alignment Change</button>
+
+        <!-- Modal for starting alignment config -->
+        <div id="alignment-config-modal" style="display:none; position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:10000; background:#fff; border:2px solid #888; border-radius:8px; box-shadow:0 2px 16px #0003; padding:1.5em; min-width:260px;">
+          <div style="margin-bottom:1em; font-weight:bold;">Set Starting Alignment</div>
+          <select id="alignment-preset-select" style="width:100%; margin-bottom:1em;">
+            <option value="">Select...</option>
+            <option value="Lawful Good">Lawful Good</option>
+            <option value="Lawful Neutral">Lawful Neutral</option>
+            <option value="Lawful Evil">Lawful Evil</option>
+            <option value="Neutral Good">Neutral Good</option>
+            <option value="Neutral Neutral">Neutral Neutral</option>
+            <option value="Neutral Evil">Neutral Evil</option>
+            <option value="Chaotic Good">Chaotic Good</option>
+            <option value="Chaotic Neutral">Chaotic Neutral</option>
+            <option value="Chaotic Evil">Chaotic Evil</option>
+          </select>
+          <button id="alignment-preset-set-btn" style="width:100%;">Set Starting Alignment</button>
+          <button id="alignment-preset-cancel-btn" style="width:100%; margin-top:0.5em;">Cancel</button>
+        </div>
       </div>
       `;
 
   // Draw the grid and marker after the tab is in the DOM
   setTimeout(() => {
+  // --- Config modal logic ---
+  const configBtn = alignmentTab.querySelector('#alignment-config-btn');
+  const configModal = alignmentTab.querySelector('#alignment-config-modal');
+  const presetSelect = alignmentTab.querySelector('#alignment-preset-select');
+  const presetSetBtn = alignmentTab.querySelector('#alignment-preset-set-btn');
+  const presetCancelBtn = alignmentTab.querySelector('#alignment-preset-cancel-btn');
+
+  if (configBtn && configModal) {
+    configBtn.addEventListener('click', () => {
+      configModal.style.display = 'block';
+    });
+  }
+  if (presetCancelBtn && configModal) {
+    presetCancelBtn.addEventListener('click', () => {
+      configModal.style.display = 'none';
+      presetSelect.value = '';
+    });
+  }
+  if (presetSetBtn && presetSelect) {
+    presetSetBtn.addEventListener('click', async () => {
+      const preset = presetSelect.value;
+      const presetMap = {
+        'Lawful Good':   { law: 37, moral: 37 },
+        'Lawful Neutral':{ law: 37, moral: 22 },
+        'Lawful Evil':   { law: 37, moral: 7 },
+        'Neutral Good':  { law: 22, moral: 37 },
+        'Neutral Neutral':{ law: 22, moral: 22 },
+        'Neutral Evil':  { law: 22, moral: 7 },
+        'Chaotic Good':  { law: 7,  moral: 37 },
+        'Chaotic Neutral':{ law: 7,  moral: 22 },
+        'Chaotic Evil':  { law: 7,  moral: 7 }
+      };
+      if (preset && presetMap[preset]) {
+        if (actor) {
+          await actor.setFlag('alignment-tab', 'alignmentValues', { ...presetMap[preset] });
+          // Optionally, clear history or reset deltas if needed
+          sessionStorage.setItem('alignment-tab-keep-active', '1');
+          let appElementForRender = alignmentTab.closest('.app');
+          if (appElementForRender && appElementForRender.app && typeof appElementForRender.app.render === 'function') {
+            appElementForRender.app.render(false);
+          }
+        }
+        configModal.style.display = 'none';
+        presetSelect.value = '';
+      }
+    });
+  }
     // --- Law/Moral delta logic ---
-    let lawDelta = 0;
-    let moralDelta = 0;
+  let lawDelta = 0;
+  let moralDelta = 0;
     const lawDeltaSpan = alignmentTab.querySelector('#law-delta');
     const moralDeltaSpan = alignmentTab.querySelector('#moral-delta');
     const lawPlus = alignmentTab.querySelector('#law-plus');
@@ -136,8 +196,57 @@ export function createAlignmentTab() {
     const canvas = alignmentTab.querySelector('#alignment-canvas');
     if (canvas && canvas.getContext) {
       const ctx = canvas.getContext('2d');
-      // Draw big grid (3x3, thick lines, each 75x75)
-      ctx.strokeStyle = '#b48be0';
+      // Fill each cell with interpolated color (intense red/gray/green)
+      for (let law = 0; law < 45; law++) {
+        for (let moral = 0; moral < 45; moral++) {
+          // Calculate color: interpolate from red (0,0) through gray (21,21) to green (44,44)
+          // Red: (255,0,0), Gray: (180,180,180), Green: (0,128,0)
+          // Interpolate law axis (horizontal)
+          let tLaw = law / 44;
+          let tMoral = moral / 44;
+          // Interpolate to gray at center, then to green at max
+          function lerp(a, b, t) { return Math.round(a + (b - a) * t); }
+          // First, interpolate red to gray, then gray to green
+          let r, g, b;
+          if (tLaw < 0.5) {
+            // Red to gray
+            let t = tLaw * 2;
+            r = lerp(255, 180, t);
+            g = lerp(0, 180, t);
+            b = lerp(0, 180, t);
+          } else {
+            // Gray to green
+            let t = (tLaw - 0.5) * 2;
+            r = lerp(180, 0, t);
+            g = lerp(180, 128, t);
+            b = lerp(180, 0, t);
+          }
+          // Now blend with moral axis: blend with same logic, then average
+          let r2, g2, b2;
+          if (tMoral < 0.5) {
+            let t = tMoral * 2;
+            r2 = lerp(255, 180, t);
+            g2 = lerp(0, 180, t);
+            b2 = lerp(0, 180, t);
+          } else {
+            let t = (tMoral - 0.5) * 2;
+            r2 = lerp(180, 0, t);
+            g2 = lerp(180, 128, t);
+            b2 = lerp(180, 0, t);
+          }
+          // Mix both axes (average)
+          let rf = Math.round((r + r2) / 2);
+          let gf = Math.round((g + g2) / 2);
+          let bf = Math.round((b + b2) / 2);
+          ctx.fillStyle = `rgb(${rf},${gf},${bf})`;
+          // (0,0) is right bottom
+          let x = 220 - law * 5;
+          let y = 225 - (moral+1)*5;
+          ctx.fillRect(x, y, 5, 5);
+        }
+      }
+      // Draw big grid (3x3, thick lines, each 75x75) with lighter color
+      ctx.strokeStyle = '#bbb';
       ctx.lineWidth = 2;
       for (let i = 0; i <= 3; i++) {
         // vertical big lines
@@ -152,10 +261,9 @@ export function createAlignmentTab() {
         ctx.stroke();
       }
       // Draw marker for (law, moral) on a 45x45 grid
-      // Clamp values to [0,44]
+     console.log('[alignment-tab] Drawing marker with alignmentValues:', alignmentValues);
       let law = Math.max(0, Math.min(44, alignmentValues.law));
       let moral = Math.max(0, Math.min(44, alignmentValues.moral));
-      // (0,0) is right bottom, so x is flipped
       let x = 220 - law * 5;
       let y = 225 - (moral+1)*5;
       ctx.fillStyle = '#111';
@@ -165,41 +273,69 @@ export function createAlignmentTab() {
     // Add event listener for the Add Alignment Change button (scoped to this tab)
     const addBtn = alignmentTab.querySelector("#alignment-add-btn");
     const infoInput = alignmentTab.querySelector("#alignment-info-input");
-    if (addBtn && infoInput) {
-      addBtn.addEventListener("click", async () => {
-        const info = infoInput.value.trim();
-        if (!info) return;
-        // Get actor from closest .app
-        let actor = null;
-        let appElement = alignmentTab.closest('.app');
-        if (appElement && appElement.app && appElement.app.actor) {
-          actor = appElement.app.actor;
-        }
-        // Fallback: try window.actor if available
-        if (!actor && window.actor) actor = window.actor;
-        // Get current history
-        let history = [];
-        if (actor) {
-          history = actor.getFlag("alignment-tab", "history") || [];
-          history = Array.isArray(history) ? history : [];
-          history = [...history, info];
-          await actor.setFlag("alignment-tab", "history", history);
-        } else {
-          // fallback: update in-memory if no actor
-          history = window._alignmentHistory = (window._alignmentHistory || []);
-          history.push(info);
-        }
-        // Update UI: add to history list
-        const historyList = alignmentTab.querySelector(".alignment-history-list");
-        if (historyList) {
-          const entryDiv = document.createElement("div");
-          entryDiv.className = "alignment-history-entry";
-          entryDiv.textContent = info;
-          historyList.appendChild(entryDiv);
-        }
-        infoInput.value = "";
-      });
-    }
+  if (addBtn && infoInput) {
+    addBtn.addEventListener("click", async () => {
+      const info = infoInput.value.trim();
+      if (!info) return;
+      // Use the actor passed to the tab
+      let history = [];
+      let alignmentValues = { law: 0, moral: 0 };
+      // Always read deltas from the UI
+      let lawDeltaVal = alignmentTab.querySelector('#law-delta').textContent.trim();
+      let moralDeltaVal = alignmentTab.querySelector('#moral-delta').textContent.trim();
+      let lawDeltaNum = parseInt(lawDeltaVal) || 0;
+      let moralDeltaNum = parseInt(moralDeltaVal) || 0;
+      let entry = info;
+      // Only add delta info if nonzero, and format as in the examples
+      let deltaStr = [];
+      if (lawDeltaNum !== 0) deltaStr.push(`${lawDeltaNum > 0 ? '+' : ''}${lawDeltaNum} law${Math.abs(lawDeltaNum) === 1 ? '' : 's'}`);
+      if (moralDeltaNum !== 0) deltaStr.push(`${moralDeltaNum > 0 ? '+' : ''}${moralDeltaNum} moral${Math.abs(moralDeltaNum) === 1 ? '' : 's'}`);
+      if (deltaStr.length > 0) {
+        entry += ` (${deltaStr.join(', ')})`;
+      }
+
+      if (actor) {
+        history = actor.getFlag("alignment-tab", "history") || [];
+        history = Array.isArray(history) ? history : [];
+        // Get and update alignment values
+        alignmentValues = actor.getFlag("alignment-tab", "alignmentValues") || { law: 0, moral: 0 };
+        // Update values and clamp to [0,44]
+        alignmentValues.law = Math.max(0, Math.min(44, alignmentValues.law + lawDeltaNum));
+        alignmentValues.moral = Math.max(0, Math.min(44, alignmentValues.moral + moralDeltaNum));
+        // Log updated values and deltas before any async/await or re-render
+        console.log('[alignment-tab] Updated alignmentValues after change:', alignmentValues, 'Deltas:', lawDeltaNum, moralDeltaNum);
+        // Save updated values
+        await actor.setFlag("alignment-tab", "alignmentValues", alignmentValues);
+        // Save new history entry
+        history = [...history, entry];
+        await actor.setFlag("alignment-tab", "history", history);
+      } else {
+        // fallback: update in-memory if no actor
+        history = window._alignmentHistory = (window._alignmentHistory || []);
+        history.push(entry);
+        // Not updating alignmentValues in-memory fallback
+      }
+      // Update UI: add to history list
+      const historyList = alignmentTab.querySelector(".alignment-history-list");
+      if (historyList) {
+        const entryDiv = document.createElement("div");
+        entryDiv.className = "alignment-history-entry";
+        entryDiv.textContent = entry;
+        historyList.appendChild(entryDiv);
+      }
+      infoInput.value = "";
+      // Always reset deltas in UI after adding
+      alignmentTab.querySelector('#law-delta').textContent = '0';
+      alignmentTab.querySelector('#moral-delta').textContent = '0';
+      // Set a flag to keep the alignment tab active after re-render
+      sessionStorage.setItem('alignment-tab-keep-active', '1');
+      // Re-render the character sheet app to update the alignment tab
+      let appElementForRender = alignmentTab.closest('.app');
+      if (appElementForRender && appElementForRender.app && typeof appElementForRender.app.render === 'function') {
+        appElementForRender.app.render(false);
+      }
+    });
+  }
   }, 0);
   return alignmentTab;
 }

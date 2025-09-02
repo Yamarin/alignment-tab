@@ -19,5 +19,5 @@ Hooks.on("renderCharacterSheetPF2e", (app, html, data) => {
     }
   }
   // Add custom tab content if not already present
-  ensureAlignmentTab(html);
+  ensureAlignmentTab(html, app);
 });
