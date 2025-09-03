@@ -1,6 +1,22 @@
 // alignment-view.js
+import { alignmentAbbreviation } from './alignment-trait-abbrev.js';
 // Displays all players' alignment values on a shared grid in the Alignment Tab module.
 // This file will provide a function to render a shared alignment grid with markers for each player.
+
+// === CONFIGURABLE GRID SIZE ===
+const GRID_SIZE = 300; // Size of the grid in px (default: 450)
+const GRID_CELLS = 3; // 3x3 big grid
+const GRID_STEPS = 45; // 45x45 fine grid
+const CELL_SIZE = GRID_SIZE / GRID_CELLS; // Size of one big cell
+const STEP_SIZE = GRID_SIZE / GRID_STEPS; // Size of one fine step
+// === MARKER SIZE (change this to affect both grid and legend markers) ===
+const MARKER_DIAMETER = 10; // px, change this to set marker size everywhere
+const MARKER_OUTER_RADIUS = MARKER_DIAMETER / 2;
+const MARKER_RING_RADIUS = MARKER_OUTER_RADIUS * 0.72;  // visually match old ratio
+const MARKER_FILL_RADIUS = MARKER_OUTER_RADIUS * 0.48;  // visually match old ratio
+const MARKER_OUTLINE = 2; // px, fixed for clarity
+const MARKER_RING_WIDTH = 6; // px, fixed for clarity
+const MARKER_FONT = `bold ${Math.round(GRID_SIZE * 0.042)}px Arial, sans-serif`;
 
 export function renderSharedAlignmentGrid(playersAlignments, container) {
   // Clear container
@@ -8,81 +24,103 @@ export function renderSharedAlignmentGrid(playersAlignments, container) {
   // Create wrapper for labels and canvas
   const wrapper = document.createElement('div');
   wrapper.style.position = 'relative';
-  // Double grid size
-  const gridSize = 450; // 225 * 2
-  wrapper.style.width = gridSize + 'px';
-  wrapper.style.height = gridSize + 'px';
-  wrapper.style.margin = '0 32px 0 32px'; // More space left/right of grid
-  // Make axis labels 50% bigger
-  const labelFontSize = '1.275em'; // 0.85em * 1.5
+  wrapper.style.width = GRID_SIZE + 'px';
+  wrapper.style.height = GRID_SIZE + 'px';
+  wrapper.style.margin = '0 16px 0 8px'; // More space left/right of grid
+  // Axis label font size
+  const labelFontSize = (GRID_SIZE * 0.038) + 'px';
   const labelStyle = `position: absolute; font-size: ${labelFontSize}; color: #555; letter-spacing: 0.1em; font-weight: bold; white-space:nowrap;`;
   const labelL = document.createElement('span');
-  labelL.style = labelStyle + 'left: -48px; top: 50%; transform: translateY(-50%) rotate(-90deg);';
+  labelL.style = labelStyle + `left: -30px; top: 50%; transform: translateY(-50%) rotate(-90deg);`;
   labelL.textContent = 'LAWFUL';
   wrapper.appendChild(labelL);
   const labelC = document.createElement('span');
-  labelC.style = labelStyle + 'right: -54px; top: 50%; transform: translateY(-50%) rotate(90deg);';
+  labelC.style = labelStyle + `right: -36px; top: 50%; transform: translateY(-50%) rotate(90deg);`;
   labelC.textContent = 'CHAOTIC';
   wrapper.appendChild(labelC);
   const labelG = document.createElement('span');
-  labelG.style = labelStyle + 'left: 50%; top: -18px; transform: translateX(-50%);';
+  labelG.style = labelStyle + `left: 50%; top: -10px; transform: translateX(-50%);`;
   labelG.textContent = 'GOOD';
   wrapper.appendChild(labelG);
   const labelE = document.createElement('span');
-  labelE.style = labelStyle + 'left: 50%; bottom: -22px; transform: translateX(-50%);';
+  labelE.style = labelStyle + `left: 50%; bottom: -16px; transform: translateX(-50%);`;
   labelE.textContent = 'EVIL';
   wrapper.appendChild(labelE);
   // Create canvas
   const canvas = document.createElement('canvas');
-  canvas.width = gridSize;
-  canvas.height = gridSize;
+  canvas.width = GRID_SIZE;
+  canvas.height = GRID_SIZE;
   canvas.style.background = '#f5eaff';
   canvas.style.border = '2px dashed #bbb';
   canvas.style.display = 'block';
   wrapper.appendChild(canvas);
   container.appendChild(wrapper);
+  // Track highlighted player for legend hover
+  let highlightedPlayerName = null;
   // Draw background image and grid
   const ctx = canvas.getContext('2d');
   const img = new window.Image();
   img.onload = function() {
-    ctx.clearRect(0, 0, gridSize, gridSize);
-    ctx.drawImage(img, 0, 0, gridSize, gridSize);
-    // Draw big grid (3x3, thick lines, each 150x150)
+    ctx.clearRect(0, 0, GRID_SIZE, GRID_SIZE);
+    ctx.drawImage(img, 0, 0, GRID_SIZE, GRID_SIZE);
+    // Draw big grid (3x3, thick lines)
     ctx.strokeStyle = '#bbb';
     ctx.lineWidth = 2;
-    for (let i = 0; i <= 3; i++) {
+    for (let i = 0; i <= GRID_CELLS; i++) {
       // vertical big lines
       ctx.beginPath();
-      ctx.moveTo(i*150, 0);
-      ctx.lineTo(i*150, gridSize);
+      ctx.moveTo(i*CELL_SIZE, 0);
+      ctx.lineTo(i*CELL_SIZE, GRID_SIZE);
       ctx.stroke();
       // horizontal big lines
       ctx.beginPath();
-      ctx.moveTo(0, gridSize-i*150);
-      ctx.lineTo(gridSize, gridSize-i*150);
+      ctx.moveTo(0, GRID_SIZE-i*CELL_SIZE);
+      ctx.lineTo(GRID_SIZE, GRID_SIZE-i*CELL_SIZE);
       ctx.stroke();
     }
-    // Draw player markers (adjusted for new grid size)
-    // For hover tooltips, store marker positions and info
+    // Draw player markers (adjusted for grid size)
     const markerInfos = [];
-    players.forEach(player => {
+    (Array.isArray(playersAlignments) ? playersAlignments : []).forEach(player => {
       if (typeof player.law === 'number' && typeof player.moral === 'number') {
-        let law = Math.max(0, Math.min(44, player.law));
-        let moral = Math.max(0, Math.min(44, player.moral));
-        let x = gridSize-10 - law * 10 + 5;
-        let y = gridSize - (moral+1)*10 + 5;
+        let law = Math.max(0, Math.min(GRID_STEPS-1, player.law));
+        let moral = Math.max(0, Math.min(GRID_STEPS-1, player.moral));
+        let x = GRID_SIZE - STEP_SIZE - law * STEP_SIZE + STEP_SIZE/2;
+        let y = GRID_SIZE - (moral+1)*STEP_SIZE + STEP_SIZE/2;
         ctx.save();
+        // Highlight if this is the hovered legend
+        let isHighlight = highlightedPlayerName && player.name === highlightedPlayerName;
+        if (isHighlight) {
+          // Draw a pointer arrow (triangle) to the marker
+          ctx.save();
+          ctx.beginPath();
+          // Arrow points to the right of the marker
+          const arrowLen = MARKER_DIAMETER * 4.4;
+          const arrowWidth = MARKER_DIAMETER * 1.8;
+          ctx.moveTo(x + MARKER_OUTER_RADIUS + arrowLen, y);
+          ctx.lineTo(x + MARKER_OUTER_RADIUS + 2, y - arrowWidth/2);
+          ctx.lineTo(x + MARKER_OUTER_RADIUS + 2, y + arrowWidth/2);
+          ctx.closePath();
+          ctx.fillStyle = '#f39c12';
+          ctx.globalAlpha = 0.85;
+          ctx.shadowColor = '#f39c12';
+          ctx.shadowBlur = 10;
+          ctx.fill();
+          ctx.globalAlpha = 1.0;
+          ctx.shadowBlur = 0;
+          ctx.restore();
+        }
         // Thin black outline around white halo
         ctx.beginPath();
-        ctx.arc(x, y, 15.5, 0, 2 * Math.PI, false);
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = '#111';
-        ctx.shadowBlur = 0;
+        ctx.arc(x, y, MARKER_OUTER_RADIUS+0.5, 0, 2 * Math.PI, false);
+        ctx.lineWidth = MARKER_OUTLINE;
+        ctx.strokeStyle = isHighlight ? '#f39c12' : '#111';
+        ctx.shadowBlur = isHighlight ? 12 : 0;
+        ctx.shadowColor = isHighlight ? '#f39c12' : 'transparent';
         ctx.stroke();
         // Outer thick white border (halo) with drop shadow
         ctx.beginPath();
-        ctx.arc(x, y, 15, 0, 2 * Math.PI, false);
-        ctx.lineWidth = 7;
+        ctx.arc(x, y, MARKER_OUTER_RADIUS, 0, 2 * Math.PI, false);
+        ctx.lineWidth = MARKER_OUTLINE * 3;
         ctx.strokeStyle = '#fff';
         ctx.shadowColor = '#000';
         ctx.shadowBlur = 8;
@@ -92,13 +130,13 @@ export function renderSharedAlignmentGrid(playersAlignments, container) {
         ctx.shadowBlur = 0;
         // Colored ring (thicker, more saturated)
         ctx.beginPath();
-        ctx.arc(x, y, 10.8, 0, 2 * Math.PI, false);
-        ctx.lineWidth = 8;
-        ctx.strokeStyle = shadeColor(player.color, -10); // slightly more saturated
+        ctx.arc(x, y, MARKER_RING_RADIUS, 0, 2 * Math.PI, false);
+        ctx.lineWidth = MARKER_RING_WIDTH;
+        ctx.strokeStyle = shadeColor(player.color, -10);
         ctx.stroke();
         // Fill center with color
         ctx.beginPath();
-        ctx.arc(x, y, 7.2, 0, 2 * Math.PI, false);
+        ctx.arc(x, y, MARKER_FILL_RADIUS, 0, 2 * Math.PI, false);
         ctx.fillStyle = player.color;
         ctx.globalAlpha = 0.95;
         ctx.fill();
@@ -106,7 +144,9 @@ export function renderSharedAlignmentGrid(playersAlignments, container) {
         ctx.restore();
         // Store marker info for hover
         markerInfos.push({
-          x, y, r: 15.5, // use outer radius for hit test
+          x,
+          y,
+          r: MARKER_OUTER_RADIUS + (MARKER_OUTLINE * 1.5) + 0.5, // include halo
           name: player.name,
           alignment: `(${lawToWord(player.law)} ${moralToWord(player.moral)})`,
           color: player.color
@@ -118,7 +158,7 @@ export function renderSharedAlignmentGrid(playersAlignments, container) {
     if (!tooltip) {
       tooltip = document.createElement('div');
       tooltip.className = 'alignment-marker-tooltip';
-      tooltip.style.position = 'absolute';
+      tooltip.style.position = 'fixed';
       tooltip.style.pointerEvents = 'none';
       tooltip.style.background = 'rgba(30,30,30,0.97)';
       tooltip.style.color = '#fff';
@@ -148,9 +188,8 @@ export function renderSharedAlignmentGrid(playersAlignments, container) {
         tooltip.textContent = `${found.name} ${found.alignment}`;
         tooltip.style.visibility = 'hidden';
         tooltip.style.display = 'block';
-        // Position tooltip just above and centered on the marker, relative to the window
+        // Position tooltip just above and centered on the marker, relative to the canvas
         const canvasRect = canvas.getBoundingClientRect();
-        const containerRect = container.getBoundingClientRect();
         const tooltipLeft = canvasRect.left + found.x - tooltip.offsetWidth / 2;
         const tooltipTop = canvasRect.top + found.y - found.r - 6;
         tooltip.style.position = 'fixed';
@@ -170,41 +209,86 @@ export function renderSharedAlignmentGrid(playersAlignments, container) {
   flexRow.style.display = 'flex';
   flexRow.style.flexDirection = 'row';
   flexRow.style.alignItems = 'flex-start';
-  flexRow.style.padding = '16px'; // Add space around the whole content
+  flexRow.style.padding = '8px'; // Add space around the whole content
   flexRow.appendChild(wrapper);
 
   // Legend (now on the right)
+  // Scrollable container for legend
+  const legendScroll = document.createElement('div');
+  legendScroll.style.maxHeight = (GRID_SIZE * 1.1) + 'px'; // slightly taller than grid
+  legendScroll.style.overflowY = 'auto';
+  legendScroll.style.minWidth = '160px';
+  legendScroll.style.flex = '1 1 auto';
+  // Actual legend content
   const legend = document.createElement('div');
-  legend.style.marginLeft = '36px';
+  legend.style.marginLeft = '0px';
   legend.style.padding = '18px 18px';
   legend.style.display = 'flex';
   legend.style.flexDirection = 'column';
   legend.style.alignItems = 'flex-start';
-  // Example players (replace with real data later)
-  const players = playersAlignments.length ? playersAlignments : [
-    { name: 'Alice', color: '#e74c3c' },
-    { name: 'Bob', color: '#3498db' },
-    { name: 'Cara', color: '#27ae60' }
-  ];
-  players.forEach(player => {
+
+  (Array.isArray(playersAlignments) ? playersAlignments : []).forEach(player => {
     const row = document.createElement('div');
     row.style.display = 'flex';
     row.style.alignItems = 'center';
-    row.style.marginBottom = '10px'; // More space between player names
-    // Marker
-    const marker = document.createElement('span');
-    marker.style.display = 'inline-block';
-    marker.style.width = '18px';
-    marker.style.height = '18px';
-    marker.style.borderRadius = '50%';
-    marker.style.background = player.color;
-    marker.style.border = '2px solid #222';
-    marker.style.marginRight = '8px';
-    row.appendChild(marker);
+    row.style.marginBottom = '10px';
+    // Marker: draw on canvas for perfect match
+    const markerCanvas = document.createElement('canvas');
+    markerCanvas.width = MARKER_DIAMETER + 12; // extra for outline/halo
+    markerCanvas.height = MARKER_DIAMETER + 12;
+    markerCanvas.style.display = 'inline-block';
+    markerCanvas.style.marginRight = '8px';
+    markerCanvas.style.background = 'transparent';
+    // Draw marker using same logic as grid
+    const mctx = markerCanvas.getContext('2d');
+    // Clear canvas to transparent before drawing
+    mctx.clearRect(0, 0, markerCanvas.width, markerCanvas.height);
+    const cx = markerCanvas.width / 2;
+    const cy = markerCanvas.height / 2;
+    // Black outline
+    mctx.beginPath();
+    mctx.arc(cx, cy, MARKER_OUTER_RADIUS+0.5, 0, 2 * Math.PI, false);
+    mctx.lineWidth = MARKER_OUTLINE;
+    mctx.strokeStyle = '#111';
+    mctx.shadowBlur = 0;
+    mctx.stroke();
+    // White halo
+    mctx.beginPath();
+    mctx.arc(cx, cy, MARKER_OUTER_RADIUS, 0, 2 * Math.PI, false);
+    mctx.lineWidth = MARKER_OUTLINE * 3;
+    mctx.strokeStyle = '#fff';
+    mctx.shadowColor = '#000';
+    mctx.shadowBlur = 8;
+    mctx.globalAlpha = 0.95;
+    mctx.stroke();
+    mctx.globalAlpha = 1.0;
+    mctx.shadowBlur = 0;
+    // Colored ring
+    mctx.beginPath();
+    mctx.arc(cx, cy, MARKER_RING_RADIUS, 0, 2 * Math.PI, false);
+    mctx.lineWidth = MARKER_RING_WIDTH;
+    mctx.strokeStyle = shadeColor(player.color, -10);
+    mctx.stroke();
+    // Fill center
+    mctx.beginPath();
+    mctx.arc(cx, cy, MARKER_FILL_RADIUS, 0, 2 * Math.PI, false);
+    mctx.fillStyle = player.color;
+    mctx.globalAlpha = 0.95;
+    mctx.fill();
+    mctx.globalAlpha = 1.0;
+    row.appendChild(markerCanvas);
+    // Hover logic: highlight marker on grid when hovering legend row
+    row.addEventListener('mouseenter', () => {
+      highlightedPlayerName = player.name;
+      img.onload(); // re-draw grid with highlight
+    });
+    row.addEventListener('mouseleave', () => {
+      highlightedPlayerName = null;
+      img.onload(); // re-draw grid without highlight
+    });
     // Name
     const name = document.createElement('span');
     name.textContent = player.name;
-    // Alignment words
     if (typeof player.law === 'number' && typeof player.moral === 'number') {
       const alignStr = ` (${lawToWord(player.law)} ${moralToWord(player.moral)})`;
       name.textContent += alignStr;
@@ -212,7 +296,8 @@ export function renderSharedAlignmentGrid(playersAlignments, container) {
     row.appendChild(name);
     legend.appendChild(row);
   });
-  flexRow.appendChild(legend);
+  legendScroll.appendChild(legend);
+  flexRow.appendChild(legendScroll);
   container.appendChild(flexRow);
 }
 
@@ -236,23 +321,42 @@ export function openAlignmentGridWindow() {
   class AlignmentGridApp extends Application {
     static get defaultOptions() {
       return foundry.utils.mergeObject(super.defaultOptions, {
-        id: "alignment-grid-app",
-        title: "Alignment Grid",
-        template: null,
-        width: 900, // double the width
-        height: 600, // double the height
-        resizable: false,
+        id: 'alignment-grid-app',
+        title: 'Alignment Grid',
+        width: GRID_SIZE * 2, // double the width
+        height: GRID_SIZE * 1.3, // double the height
+        resizable: false, // resizing disabled
+        minimizable: true,
         popOut: true,
+        classes: ['alignment-grid-app'],
+        dragDrop: [],
+        tabs: []
       });
     }
-    getData() { return {}; }
-    async _renderInner(data, options) {
-      const $div = $(`<div id='alignment-grid-container' style='width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;'></div>`);
-      setTimeout(() => {
-        const container = $div[0];
-        if (container) renderSharedAlignmentGrid(playersAlignments, container);
-      }, 0);
-      return $div;
+
+    /**
+     * Override to inject our custom DOM directly.
+     */
+    async _renderInner(...args) {
+      // Create a container div for the grid
+      const container = document.createElement('div');
+      container.style.width = '100%';
+      container.style.height = '100%';
+      // Use the same player data logic as before
+      const playersAlignments = game.actors
+        .filter(actor => actor.hasPlayerOwner && actor.type === 'character')
+        .map((actor, idx) => {
+          const alignmentValues = actor.getFlag('alignment-tab', 'alignmentValues') || { law: 22, moral: 22 };
+          const palette = ['#e74c3c', '#3498db', '#27ae60', '#f39c12', '#9b59b6', '#16a085', '#e67e22', '#34495e'];
+          return {
+            name: actor.name,
+            color: palette[idx % palette.length],
+            law: alignmentValues.law,
+            moral: alignmentValues.moral
+          };
+        });
+      renderSharedAlignmentGrid(playersAlignments, container);
+      return $(container);
     }
   }
   new AlignmentGridApp().render(true);

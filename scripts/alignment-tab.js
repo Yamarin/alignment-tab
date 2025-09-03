@@ -1,3 +1,4 @@
+import { addTraitToAncestry } from './alignment-ancestry-trait.js';
 export function ensureAlignmentTab(html) {
   // Use the app argument (sheet instance) to get the actor
   let actor = null;
@@ -16,19 +17,15 @@ export function ensureAlignmentTab(html) {
   if (sessionStorage.getItem('alignment-tab-keep-active')) {
     const nav = html[0].querySelector("nav.sheet-navigation[data-group='primary']");
     const tabButton = nav && nav.querySelector("a[data-tab='alignment']");
-    const tabContent = html[0].querySelector(".tab[data-tab='alignment']");
-    if (tabButton && tabContent) {
-      // Deactivate all tabs
-      nav.querySelectorAll('a.item').forEach(a => a.classList.remove('active'));
-      html[0].querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      // Activate alignment tab
-      tabButton.classList.add('active');
-      tabContent.classList.add('active');
+    if (tabButton) {
+      // Simulate a click to activate the alignment tab using Foundry's logic
+      tabButton.click();
     }
     sessionStorage.removeItem('alignment-tab-keep-active');
   }
 }
 // alignmentTab.js
+import { alignmentAbbreviation } from './alignment-trait-abbrev.js';
 // Handles the creation and content of the Alignment tab in the character sheet.
 
 export function createAlignmentTab(actor) {
@@ -195,6 +192,11 @@ export function createAlignmentTab(actor) {
           await actor.setFlag('alignment-tab', 'history', [
             `You set starting alignment to ${preset}`
           ]);
+          // Add alignment abbreviation as trait to ancestry
+          const abbr = alignmentAbbreviation(presetMap[preset].law, presetMap[preset].moral);
+          if (abbr) {
+            await addTraitToAncestry(actor, abbr.toLowerCase());
+          }
           sessionStorage.setItem('alignment-tab-keep-active', '1');
           let appElementForRender = alignmentTab.closest('.app');
           if (appElementForRender && appElementForRender.app && typeof appElementForRender.app.render === 'function') {
@@ -310,6 +312,11 @@ export function createAlignmentTab(actor) {
         console.log('[alignment-tab] Updated alignmentValues after change:', alignmentValues, 'Deltas:', lawDeltaNum, moralDeltaNum);
         // Save updated values
         await actor.setFlag("alignment-tab", "alignmentValues", alignmentValues);
+        // Update ancestry trait to match new alignment
+        const abbr = alignmentAbbreviation(alignmentValues.law, alignmentValues.moral);
+        if (abbr) {
+          await addTraitToAncestry(actor, abbr.toLowerCase());
+        }
         // Save new history entry
         history = [...history, entry];
         await actor.setFlag("alignment-tab", "history", history);
