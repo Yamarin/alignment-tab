@@ -49,6 +49,7 @@ export function createAlignmentTab(actor) {
 
   // Render history entries
   const historyHtml = history.map(entry => `<div class=\"alignment-history-entry\">${entry}</div>`).reverse().join("");
+
   // Add style for subtle line between history entries
   if (!document.getElementById('alignment-history-entry-style')) {
     const style = document.createElement('style');
@@ -197,6 +198,22 @@ export function createAlignmentTab(actor) {
           if (abbr) {
             await addTraitToAncestry(actor, abbr.toLowerCase());
           }
+          // Add holy/unholy trait based on moral value
+          const ancestry = actor.items.find(i => i.type === 'ancestry');
+          if (ancestry) {
+            let traits = ancestry.system?.traits?.value || [];
+            // Remove holy/unholy if present
+            traits = traits.filter(t => t !== 'holy' && t !== 'unholy');
+            const moral = presetMap[preset].moral;
+            if (moral >= 30 && moral <= 44) {
+              // Good
+              traits.push('holy');
+            } else if (moral >= 0 && moral <= 14) {
+              // Evil
+              traits.push('unholy');
+            }
+            await ancestry.update({ 'system.traits.value': traits });
+          }
           sessionStorage.setItem('alignment-tab-keep-active', '1');
           let appElementForRender = alignmentTab.closest('.app');
           if (appElementForRender && appElementForRender.app && typeof appElementForRender.app.render === 'function') {
@@ -316,6 +333,22 @@ export function createAlignmentTab(actor) {
         const abbr = alignmentAbbreviation(alignmentValues.law, alignmentValues.moral);
         if (abbr) {
           await addTraitToAncestry(actor, abbr.toLowerCase());
+          // Add holy/unholy trait based on updated moral value
+          const ancestry = actor.items.find(i => i.type === 'ancestry');
+          if (ancestry) {
+            let traits = ancestry.system?.traits?.value || [];
+            // Remove holy/unholy if present
+            traits = traits.filter(t => t !== 'holy' && t !== 'unholy');
+            const moral = alignmentValues.moral;
+            if (moral >= 30 && moral <= 44) {
+              // Good
+              traits.push('holy');
+            } else if (moral >= 0 && moral <= 14) {
+              // Evil
+              traits.push('unholy');
+            }
+            await ancestry.update({ 'system.traits.value': traits });
+          }
         }
         // Save new history entry
         history = [...history, entry];

@@ -57,6 +57,12 @@ export function renderSharedAlignmentGrid(playersAlignments, container) {
   container.appendChild(wrapper);
   // Track highlighted player for legend hover
   let highlightedPlayerName = null;
+
+  // Sort playersAlignments alphabetically by name for legend
+  const sortedPlayers = (Array.isArray(playersAlignments) ? [...playersAlignments] : []).sort((a, b) => {
+    if (!a.name || !b.name) return 0;
+    return a.name.localeCompare(b.name, undefined, {sensitivity: 'base'});
+  });
   // Draw background image and grid
   const ctx = canvas.getContext('2d');
   const img = new window.Image();
@@ -227,7 +233,7 @@ export function renderSharedAlignmentGrid(playersAlignments, container) {
   legend.style.flexDirection = 'column';
   legend.style.alignItems = 'flex-start';
 
-  (Array.isArray(playersAlignments) ? playersAlignments : []).forEach(player => {
+  sortedPlayers.forEach(player => {
     const row = document.createElement('div');
     row.style.display = 'flex';
     row.style.alignItems = 'center';
