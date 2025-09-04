@@ -29,3 +29,7 @@ Adds a persistent, interactive Alignment Tab to the Pathfinder 2e (PF2E) charact
 
 - Foundry VTT v12+
 - Pathfinder 2e system v6+
+
+## Additional settings
+- In Configure Settings -> Pathfinder Second Edition -> Manage Homenbrew Elements add abbreviation for alignments and two new traits for alignment effects/damage as can be seen in assets\image.png
+- Traits list to add: LG, LN, LE, NG, NN, NE, CN, CE, CG, Ordered, Unchained

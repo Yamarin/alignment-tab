@@ -193,25 +193,27 @@ export function createAlignmentTab(actor) {
           await actor.setFlag('alignment-tab', 'history', [
             `You set starting alignment to ${preset}`
           ]);
-          // Add alignment abbreviation as trait to ancestry
+          // Add alignment abbreviation as trait to ancestry, and holy/unholy/ordered/unchained as needed
           const abbr = alignmentAbbreviation(presetMap[preset].law, presetMap[preset].moral);
-          if (abbr) {
-            await addTraitToAncestry(actor, abbr.toLowerCase());
-          }
-          // Add holy/unholy trait based on moral value
           const ancestry = actor.items.find(i => i.type === 'ancestry');
           if (ancestry) {
             let traits = ancestry.system?.traits?.value || [];
-            // Remove holy/unholy if present
-            traits = traits.filter(t => t !== 'holy' && t !== 'unholy');
+            // Remove all alignment, holy/unholy, ordered/unchained traits
+            const REMOVE_TRAITS = [
+              'lg','ln','le','ng','ne','cg','cn','ce','nn',
+              'holy','unholy','ordered','unchained'
+            ];
+            traits = traits.filter(t => !REMOVE_TRAITS.includes(t));
+            // Add alignment trait
+            if (abbr) traits.push(abbr.toLowerCase());
+            // Add holy/unholy
             const moral = presetMap[preset].moral;
-            if (moral >= 30 && moral <= 44) {
-              // Good
-              traits.push('holy');
-            } else if (moral >= 0 && moral <= 14) {
-              // Evil
-              traits.push('unholy');
-            }
+            if (moral >= 30 && moral <= 44) traits.push('holy');
+            else if (moral >= 0 && moral <= 14) traits.push('unholy');
+            // Add ordered/unchained
+            const law = presetMap[preset].law;
+            if (law >= 30 && law <= 44) traits.push('ordered');
+            else if (law >= 0 && law <= 14) traits.push('unchained');
             await ancestry.update({ 'system.traits.value': traits });
           }
           sessionStorage.setItem('alignment-tab-keep-active', '1');
@@ -332,21 +334,26 @@ export function createAlignmentTab(actor) {
         // Update ancestry trait to match new alignment
         const abbr = alignmentAbbreviation(alignmentValues.law, alignmentValues.moral);
         if (abbr) {
-          await addTraitToAncestry(actor, abbr.toLowerCase());
-          // Add holy/unholy trait based on updated moral value
+          // Add alignment abbreviation as trait to ancestry, and holy/unholy/ordered/unchained as needed
           const ancestry = actor.items.find(i => i.type === 'ancestry');
           if (ancestry) {
             let traits = ancestry.system?.traits?.value || [];
-            // Remove holy/unholy if present
-            traits = traits.filter(t => t !== 'holy' && t !== 'unholy');
+            // Remove all alignment, holy/unholy, ordered/unchained traits
+            const REMOVE_TRAITS = [
+              'lg','ln','le','ng','ne','cg','cn','ce','nn',
+              'holy','unholy','ordered','unchained'
+            ];
+            traits = traits.filter(t => !REMOVE_TRAITS.includes(t));
+            // Add alignment trait
+            if (abbr) traits.push(abbr.toLowerCase());
+            // Add holy/unholy
             const moral = alignmentValues.moral;
-            if (moral >= 30 && moral <= 44) {
-              // Good
-              traits.push('holy');
-            } else if (moral >= 0 && moral <= 14) {
-              // Evil
-              traits.push('unholy');
-            }
+            if (moral >= 30 && moral <= 44) traits.push('holy');
+            else if (moral >= 0 && moral <= 14) traits.push('unholy');
+            // Add ordered/unchained
+            const law = alignmentValues.law;
+            if (law >= 30 && law <= 44) traits.push('ordered');
+            else if (law >= 0 && law <= 14) traits.push('unchained');
             await ancestry.update({ 'system.traits.value': traits });
           }
         }
